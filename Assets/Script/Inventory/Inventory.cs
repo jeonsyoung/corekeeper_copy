@@ -16,6 +16,8 @@ public class Inventory : MonoBehaviour
 
     public IReadOnlyList<InventorySlotData> Slots => slots;
 
+    private const int MAX_SLOT = 9;
+
     public event Action OnInventoryChanged;
 
     private void Awake()
@@ -57,6 +59,12 @@ public class Inventory : MonoBehaviour
 
         InventorySlotData existingSlot =
             slots.Find(slot => slot.item == item);
+
+        if (existingSlot == null && slots.Count >= MAX_SLOT)
+        {
+            Debug.Log("인벤토리가 가득 찼습니다.");
+            return;
+        }
 
         if (existingSlot != null)
         {

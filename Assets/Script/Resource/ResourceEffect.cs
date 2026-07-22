@@ -30,7 +30,12 @@ public class ResourceEffect : MonoBehaviour
     private Color originalColor;
 
     private Coroutine hitCoroutine;
+    private Coroutine destroyCoroutine;
+
     private bool isDestroying;
+
+    // Resource.cs에서 파괴 연출 시간을 확인할 때 사용
+    public float DestroyDuration => destroyDuration;
 
     private void Awake()
     {
@@ -41,7 +46,14 @@ public class ResourceEffect : MonoBehaviour
 
         if (spriteRenderer == null)
         {
-            spriteRenderer = visual.GetComponent<SpriteRenderer>();
+            spriteRenderer =
+                visual.GetComponent<SpriteRenderer>();
+
+            if (spriteRenderer == null)
+            {
+                spriteRenderer =
+                    GetComponentInChildren<SpriteRenderer>();
+            }
         }
 
         originalPosition = visual.localPosition;
@@ -55,7 +67,7 @@ public class ResourceEffect : MonoBehaviour
 
     private void Update()
     {
-        // 테스트용:
+        // 테스트용
         // H키를 누르면 타격 효과
         // J키를 누르면 파괴 효과
         if (Input.GetKeyDown(KeyCode.H))
@@ -81,10 +93,17 @@ public class ResourceEffect : MonoBehaviour
             StopCoroutine(hitCoroutine);
         }
 
-        hitCoroutine = StartCoroutine(HitEffectCoroutine());
+        hitCoroutine = StartCoroutine(
+            HitEffectCoroutine()
+        );
 
         if (hitParticle != null)
         {
+            hitParticle.Stop(
+                true,
+                ParticleSystemStopBehavior.StopEmittingAndClear
+            );
+
             hitParticle.Play();
         }
 
@@ -106,9 +125,17 @@ public class ResourceEffect : MonoBehaviour
         if (hitCoroutine != null)
         {
             StopCoroutine(hitCoroutine);
+            hitCoroutine = null;
         }
 
-        StartCoroutine(DestroyEffectCoroutine());
+        if (destroyCoroutine != null)
+        {
+            StopCoroutine(destroyCoroutine);
+        }
+
+        destroyCoroutine = StartCoroutine(
+            DestroyEffectCoroutine()
+        );
     }
 
     private IEnumerator HitEffectCoroutine()
@@ -122,10 +149,19 @@ public class ResourceEffect : MonoBehaviour
 
         while (elapsedTime < shakeDuration)
         {
-            float x = Random.Range(-shakePower, shakePower);
-            float y = Random.Range(-shakePower * 0.35f, shakePower * 0.35f);
+            float x = Random.Range(
+                -shakePower,
+                shakePower
+            );
 
-            visual.localPosition = originalPosition + new Vector3(x, y, 0f);
+            float y = Random.Range(
+                -shakePower * 0.35f,
+                shakePower * 0.35f
+            );
+
+            visual.localPosition =
+                originalPosition +
+                new Vector3(x, y, 0f);
 
             elapsedTime += Time.deltaTime;
             yield return null;
@@ -133,7 +169,9 @@ public class ResourceEffect : MonoBehaviour
 
         visual.localPosition = originalPosition;
 
-        yield return new WaitForSeconds(flashDuration);
+        yield return new WaitForSeconds(
+            flashDuration
+        );
 
         if (spriteRenderer != null)
         {
@@ -152,27 +190,43 @@ public class ResourceEffect : MonoBehaviour
 
         if (destroyParticle != null)
         {
-            destroyParticle.transform.SetParent(null);
-            destroyParticle.Play();
-
-            Destroy(
-                destroyParticle.gameObject,
-                destroyParticle.main.duration +
-                destroyParticle.main.startLifetime.constantMax
+            destroyParticle.Stop(
+                true,
+                ParticleSystemStopBehavior.StopEmittingAndClear
             );
+
+            destroyParticle.Play();
         }
 
         float elapsedTime = 0f;
 
         while (elapsedTime < destroyDuration)
         {
-            float progress = elapsedTime / destroyDuration;
+            float progress =
+                elapsedTime / destroyDuration;
 
-            visual.localScale = Vector3.Lerp(
-                originalScale,
-                Vector3.zero,
-                progress
-            );
+            // 살짝 커졌다가 빠르게 작아지는 효과
+            float scaleMultiplier;
+
+            if (progress < 0.2f)
+            {
+                scaleMultiplier = Mathf.Lerp(
+                    1f,
+                    1.1f,
+                    progress / 0.2f
+                );
+            }
+            else
+            {
+                scaleMultiplier = Mathf.Lerp(
+                    1.1f,
+                    0f,
+                    (progress - 0.2f) / 0.8f
+                );
+            }
+
+            visual.localScale =
+                originalScale * scaleMultiplier;
 
             visual.localPosition =
                 originalPosition +
@@ -187,7 +241,51 @@ public class ResourceEffect : MonoBehaviour
         }
 
         visual.localScale = Vector3.zero;
+        visual.localPosition = originalPosition;
 
-        Destroy(gameObject);
+        destroyCoroutine = null;
+
+        // 여기에서 Destroy(gameObject)를 하면 안 됨
+    }
+
+    public void ResetEffect()
+    {
+        if (hitCoroutine != null)
+        {
+            StopCoroutine(hitCoroutine);
+            hitCoroutine = null;
+        }
+
+        if (destroyCoroutine != null)
+        {
+            StopCoroutine(destroyCoroutine);
+            destroyCoroutine = null;
+        }
+
+        isDestroying = false;
+
+        visual.localPosition = originalPosition;
+        visual.localScale = originalScale;
+
+        if (spriteRenderer != null)
+        {
+            spriteRenderer.color = originalColor;
+        }
+
+        if (hitParticle != null)
+        {
+            hitParticle.Stop(
+                true,
+                ParticleSystemStopBehavior.StopEmittingAndClear
+            );
+        }
+
+        if (destroyParticle != null)
+        {
+            destroyParticle.Stop(
+                true,
+                ParticleSystemStopBehavior.StopEmittingAndClear
+            );
+        }
     }
 }

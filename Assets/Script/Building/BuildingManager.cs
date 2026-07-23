@@ -6,10 +6,12 @@ public class BuildingManager : MonoBehaviour
 
     [Header("설치할 건물")]
     [SerializeField] private GameObject ChikenHousePrefab;
+    private SpriteRenderer previewRenderer;
 
     private GameObject previewObject;
 
     private bool isBuildMode;
+    bool canPlace = true;
 
     private void Awake()
     {
@@ -40,6 +42,23 @@ public class BuildingManager : MonoBehaviour
         if (isBuildMode)
         {
             previewObject = Instantiate(ChikenHousePrefab);
+            previewRenderer = previewObject.GetComponent<SpriteRenderer>();
+
+            if (canPlace)
+            {
+                previewRenderer.color = Color.green;
+            }
+            else
+            {
+                previewRenderer.color = Color.red;
+            }
+
+            if (Input.GetMouseButtonDown(0) && canPlace)
+            {
+                Instantiate(ChikenHousePrefab,
+                            previewObject.transform.position,
+                            Quaternion.identity);
+            }
         }
         else
         {
